@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu Bonbons - Niveau et Chronomètre</title>
+    <style>
+        body {
+            font-family: "Arial", sans-serif;
+            background-color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: linear-gradient(to bottom, #1d4e89 1.2cm, #6baed6 1.2cm);
+            background-size: 100% 1.2cm;
+            background-repeat: repeat-y;
+        }
+
+        #game-container {
+            display: flex;
+            align-items: center;
+        }
+
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            gap: 5px;
+            padding: 5px;
+            border-radius: 10px;
+            background-color: #000;
+            border: 1px solid red;
+            box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .candy {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            cursor: pointer;
+            background-color: transparent;
+            border-radius: 10px;
+            box-shadow: inset 0px 0px 5px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s ease;
+            user-select: none;
+        }
+
+        .highlight {
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .selected {
+            background-color: gray;
+        }
+
+        .falling {
+            animation: fall 0.5s ease-in-out forwards;
+        }
+
+        .disappear {
+            animation: disappear 0.3s forwards;
+        }
+
+        @keyframes fall {
+            0% {
+                transform: translateY(-60px);
+            }
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes disappear {
+            0% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(0);
+            }
+        }
+
+        #score-time-container {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px 20px;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+        }
+
+        #score {
+            font-size: 20px;
+            font-weight: bold;
+            font-style: italic;
+            color: red;
+        }
+
+        #time {
+            font-size: 20px;
+            font-weight: bold;
+            font-style: italic;
+        }
+
+        #level {
+            font-size: 25px;
+            font-weight: bold;
+            font-style: italic;
+            color: red;
+        }
+
+        .game-title {
+            font-family: 'Candy Crush', cursive, sans-serif;
+            font-size: 40px;
+            color: red;
+            margin-left: 40px;
+            font-weight: bold;
+        }
+
+        .name {
+            font-size: 20px;
+            font-weight: bold;
+            color: red;
+            margin-left: 20px;
+        }
+
+        .game-background {
+            background: linear-gradient(to bottom, #1d4e89 1.2cm, #6baed6 1.2cm);
+            background-size: 100% 1.2cm;
+            background-repeat: repeat-y;
+        }
+
+    </style>
+</head>
+<body class="game-background">
+    <div id="game-container">
+        <div>
+            <div id="game-board"></div>
+            <div id="score-time-container">
+                <div id="score">Score: 0</div>
+                <div id="time">1:00</div>
+            </div>
+            <div id="level">Level: 1</div>
+        </div>
+        <div class="game-title">Candy Bonbons</div>
+    </div>
+
+    <script>
+        const rows = 8;
+        const cols = 8;
+        const candyEmojis = ['🍬', '🍒', '🍊', '🍋', '🍎', '🍇'];
+        let board = [];
+        let score = 0;
+        let level = 1;
+        let selectedCandies = [];
+        let isMouseDown = false;
+        let candyTypeSelected = null;
+        const gameBoard = document.getElementById("game-board");
+        const scoreDisplay = document.getElementById("score");
+        const timeDisplay = document.getElementById("time");
+        const levelDisplay = document.getElementById("level");
+        let timer = 60;
+        let timerInterval;
+
+        // Génère la grille initiale
+        function generateBoard() {
+            board = [];
+            for (let row = 0; row < rows; row++) {
+                let rowArr = [];
+                for (let col = 0; col < cols; col++) {
+                    const randomCandy = candyEmojis[Math.floor(Math.random() * candyEmojis.length)];
+                    rowArr.push(randomCandy);
+                }
+                board.push(rowArr);
+            }
+            renderBoard();
+        }
+
+        // Affiche la grille sur la page
+        function renderBoard() {
+            gameBoard.innerHTML = "";
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    const candy = document.createElement("div");
+                    candy.classList.add("candy");
+                    candy.dataset.row = row;
+                    candy.dataset.col = col;
+                    candy.textContent = board[row][col];
+                    candy.addEventListener("mousedown", () => handleMouseDown(row, col));
+                    candy.addEventListener("mouseover", () => handleCandyHover(row, col));
+                    candy.addEventListener("mouseup", () => handleMouseUp());
+                    gameBoard.appendChild(candy);
+                }
+            }
+        }
+
+        // Gestion du clic sur un bonbon
+        function handleMouseDown(row, col) {
+            isMouseDown = true;
+            candyTypeSelected = board[row][col];
+            selectedCandies = [{ row, col }];
+            highlightCandy(row, col);
+            setCandySelected(row, col);
+        }
+
+        // Gestion du survol d'un bonbon pendant le clic
+        function handleCandyHover(row, col) {
+            if (isMouseDown && board[row][col] === candyTypeSelected && !isAlreadySelected(row, col)) {
+                if (isAdjacent(selectedCandies[selectedCandies.length - 1].row, selectedCandies[selectedCandies.length - 1].col, row, col)) {
+                    selectedCandies.push({ row, col });
+                    highlightCandy(row, col);
+                    setCandySelected(row, col);
+                }
+            }
+        }
+
+        // Vérifie si les bonbons sont adjacents
+        function isAdjacent(row1, col1, row2, col2) {
+            const rowDiff = Math.abs(row1 - row2);
+            const colDiff = Math.abs(col1 - col2);
+            return (rowDiff === 1 && colDiff === 0) || 
+                   (rowDiff === 0 && colDiff === 1) || 
+                   (rowDiff === 1 && colDiff === 1);
+        }
+
+        // Vérifie si un bonbon est déjà sélectionné
+        function isAlreadySelected(row, col) {
+            return selectedCandies.some(candy => candy.row === row && candy.col === col);
+        }
+
+        // Surligne un bonbon sélectionné
+        function highlightCandy(row, col) {
+            const candyDiv = document.querySelector(`.candy[data-row="${row}"][data-col="${col}"]`);
+            candyDiv.classList.add("highlight");
+        }
+
+        // Ajoute le fond gris pour un bonbon sélectionné
+        function setCandySelected(row, col) {
+            const candyDiv = document.querySelector(`.candy[data-row="${row}"][data-col="${col}"]`);
+            candyDiv.classList.add("selected");
+        }
+
+        // Retire le surlignage des bonbons
+        function clearHighlight() {
+            const highlightedCandies = document.querySelectorAll(".highlight");
+            highlightedCandies.forEach(candy => candy.classList.remove("highlight"));
+        }
+
+        // Retire la couleur gris des bonbons sélectionnés
+        function clearSelected() {
+            const selectedCandiesDiv = document.querySelectorAll(".selected");
+            selectedCandiesDiv.forEach(candy => candy.classList.remove("selected"));
+        }
+
+        // Gestion du relâchement de la souris
+        function handleMouseUp() {
+            if (isMouseDown) {
+                isMouseDown = false;
+                if (selectedCandies.length > 1) {
+                    removeCandies(selectedCandies);
+                    updateScore(selectedCandies.length);
+                    checkLevelUp();
+                }
+                clearHighlight();
+                clearSelected();
+            }
+        }
+
+        // Enlève les bonbons correspondants
+        function removeCandies(candies) {
+            candies.forEach(({ row, col }) => {
+                const candyDiv = document.querySelector(`.candy[data-row="${row}"][data-col="${col}"]`);
+                candyDiv.classList.add("disappear");
+                board[row][col] = null; // Supprimer le bonbon
+            });
+
+            // Faire tomber les bonbons
+            setTimeout(() => {
+                refillBoard();
+                renderBoard();
+            }, 300);
+        }
+
+        // Remplir la grille après la chute des bonbons
+        function refillBoard() {
+            for (let col = 0; col < cols; col++) {
+                for (let row = rows - 1; row >= 0; row--) {
+                    if (board[row][col] === null) {
+                        let newRow = row;
+                        while (newRow > 0 && board[newRow - 1][col] === null) {
+                            newRow--;
+                        }
+                        if (newRow !== row) {
+                            board[row][col] = board[newRow][col];
+                            board[newRow][col] = null;
+                        }
+                    }
+                }
+            }
+            // Ajouter des bonbons en haut
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    if (board[row][col] === null) {
+                        board[row][col] = candyEmojis[Math.floor(Math.random() * candyEmojis.length)];
+                    }
+                }
+            }
+        }
+
+        // Mise à jour du score
+        function updateScore(matches) {
+            score += matches * 60;
+            scoreDisplay.textContent = "Score: " + score;
+        }
+
+        // Vérifie si on passe à un nouveau niveau
+        function checkLevelUp() {
+            if (score >= level * 4000) {
+                level++;
+                levelDisplay.textContent = "Level: " + level;
+                timer = 60; // Réinitialiser le chronomètre à 60 secondes
+                clearInterval(timerInterval);
+                timerInterval = setInterval(updateTime, 1000);
+            }
+        }
+
+        // Mise à jour du temps
+        function updateTime() {
+            timer--;
+            if (timer <= 0) {
+                clearInterval(timerInterval);
+                explodeAllCandies();
+                alert("Terminé ! Score final : " + score);
+            }
+            const minutes = Math.floor(timer / 60);
+            const seconds = timer % 60;
+            timeDisplay.textContent = `${minutes}:${seconds < 10 ? "0" + seconds : seconds}`;
+        }
+
+        // Explosion de tous les bonbons à la fin
+        function explodeAllCandies() {
+            const allCandies = document.querySelectorAll(".candy");
+            allCandies.forEach(candy => {
+                candy.classList.add("disappear");
+            });
+        }
+
+        // Initialisation du jeu
+        generateBoard();
+        timerInterval = setInterval(updateTime, 1000); // Démarrer le chronomètre
+    </script>
+</body>
+</html>
