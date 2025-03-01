@@ -7,15 +7,14 @@
     <style>
         body {
             font-family: "Arial", sans-serif;
-            background-color: #333;
+            background-image: url('https://i.postimg.cc/KYZRMVr8/newback3800.png');
+            background-size: cover;
+            background-position: top;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            background-image: linear-gradient(to bottom, #1d4e89 1.2cm, #6baed6 1.2cm);
-            background-size: 100% 1.2cm;
-            background-repeat: repeat-y;
         }
 
         #game-container {
@@ -118,7 +117,7 @@
             font-family: 'Candy Crush', cursive, sans-serif;
             font-size: 40px;
             color: red;
-            margin-left: 40px;
+            margin-right: 40px;
             font-weight: bold;
         }
 
@@ -129,16 +128,11 @@
             margin-left: 20px;
         }
 
-        .game-background {
-            background: linear-gradient(to bottom, #1d4e89 1.2cm, #6baed6 1.2cm);
-            background-size: 100% 1.2cm;
-            background-repeat: repeat-y;
-        }
-
     </style>
 </head>
-<body class="game-background">
+<body>
     <div id="game-container">
+        <div class="game-title">Candy Bonbons</div>
         <div>
             <div id="game-board"></div>
             <div id="score-time-container">
@@ -147,7 +141,6 @@
             </div>
             <div id="level">Level: 1</div>
         </div>
-        <div class="game-title">Candy Bonbons</div>
     </div>
 
     <script>
@@ -276,40 +269,23 @@
             candies.forEach(({ row, col }) => {
                 const candyDiv = document.querySelector(`.candy[data-row="${row}"][data-col="${col}"]`);
                 candyDiv.classList.add("disappear");
-                board[row][col] = null; // Supprimer le bonbon
+                board[row][col] = null;
             });
-
-            // Faire tomber les bonbons
             setTimeout(() => {
-                refillBoard();
-                renderBoard();
+                dropNewCandies();
             }, 300);
         }
 
-        // Remplir la grille après la chute des bonbons
-        function refillBoard() {
-            for (let col = 0; col < cols; col++) {
-                for (let row = rows - 1; row >= 0; row--) {
-                    if (board[row][col] === null) {
-                        let newRow = row;
-                        while (newRow > 0 && board[newRow - 1][col] === null) {
-                            newRow--;
-                        }
-                        if (newRow !== row) {
-                            board[row][col] = board[newRow][col];
-                            board[newRow][col] = null;
-                        }
-                    }
-                }
-            }
-            // Ajouter des bonbons en haut
-            for (let row = 0; row < rows; row++) {
+        // Fait tomber de nouveaux bonbons
+        function dropNewCandies() {
+            for (let row = rows - 1; row >= 0; row--) {
                 for (let col = 0; col < cols; col++) {
                     if (board[row][col] === null) {
                         board[row][col] = candyEmojis[Math.floor(Math.random() * candyEmojis.length)];
                     }
                 }
             }
+            renderBoard();
         }
 
         // Mise à jour du score
